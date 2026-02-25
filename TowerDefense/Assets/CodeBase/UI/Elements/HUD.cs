@@ -74,7 +74,7 @@ namespace CodeBase.UI.HUD
         private void UpdateScore(int value)
         {
             if (scoreText != null)
-                scoreText.text = value.ToString();
+                scoreText.SetText("Score: {0}", value);
         }
 
         private void UpdateCastleHp(float current, float max)
@@ -84,7 +84,8 @@ namespace CodeBase.UI.HUD
 
             int c = Mathf.CeilToInt(current);
             int m = Mathf.CeilToInt(max);
-            castleHpText.text = $"{c}/{m}";
+
+            castleHpText.SetText("Castle Health: {0}/{1}", c, m);
         }
     }
 }
