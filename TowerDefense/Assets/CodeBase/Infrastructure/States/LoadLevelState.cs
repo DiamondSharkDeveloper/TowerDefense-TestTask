@@ -1,10 +1,12 @@
 using System.Threading.Tasks;
+using CodeBase.Enums;
 using CodeBase.Infrastructure.Factory;
 using CodeBase.Logic;
 using CodeBase.Services.Input;
 using CodeBase.Services.PersistentProgress;
 using CodeBase.Services.StaticData;
 using CodeBase.StaticData;
+using CodeBase.UI.Windows;
 using UnityEngine;
 
 namespace CodeBase.Infrastructure.States
@@ -17,9 +19,10 @@ namespace CodeBase.Infrastructure.States
         private readonly IGameFactory _gameFactory;
         private readonly IPersistentProgressService _progressService;
         private readonly IStaticDataService _staticData;
-        private PlayerData _playerData;
-
         private readonly IInputService _inputService;
+        private readonly IWindowService _windowService;
+
+        private PlayerData _playerData;
 
         public LoadLevelState(GameStateMachine gameStateMachine,
             SceneLoader sceneLoader,
@@ -27,7 +30,8 @@ namespace CodeBase.Infrastructure.States
             IGameFactory gameFactory,
             IPersistentProgressService progressService,
             IStaticDataService staticDataService,
-            IInputService inputService)
+            IInputService inputService,
+            IWindowService windowService)
         {
             _stateMachine = gameStateMachine;
             _sceneLoader = sceneLoader;
@@ -36,6 +40,7 @@ namespace CodeBase.Infrastructure.States
             _progressService = progressService;
             _staticData = staticDataService;
             _inputService = inputService;
+            _windowService = windowService;
         }
 
         public void Enter(string isGameRun)
@@ -72,9 +77,24 @@ namespace CodeBase.Infrastructure.States
             }
 
             _gameFactory.SetLevelReferences(refs);
-            _gameFactory.CreateEnemyWaves(levelData, () => { }, () => { });
+
+            _gameFactory.CreateEnemyWaves(levelData, HandleWin, HandleLose);
 
             await Task.CompletedTask;
+        }
+
+        private void HandleWin()
+        {
+            Time.timeScale = 0f;
+            _windowService.Open(WindowId.MainMenu);
+            Debug.Log("WIN: All waves completed");
+        }
+
+        private void HandleLose()
+        {
+            Time.timeScale = 0f;
+            _windowService.Open(WindowId.MainMenu);
+            Debug.Log("LOSE: Castle destroyed");
         }
     }
 }

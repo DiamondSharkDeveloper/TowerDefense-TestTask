@@ -42,6 +42,10 @@ namespace CodeBase.Infrastructure.Factory
         private readonly EnemyRegistry _registry = new EnemyRegistry();
 
         private int _aliveEnemies;
+        private bool _allWavesSpawned;
+        private bool _isGameOver;
+
+        private CastleTarget _castleCached;
 
         public GameFactory(
             IAssetProvider assets,
@@ -69,9 +73,7 @@ namespace CodeBase.Infrastructure.Factory
                 return;
             }
 
-            CastleTarget castle = _levelReferences.CastleTarget as CastleTarget;
-            if (castle != null)
-                castle.Init(_tdConfig.castleMaxHp, _tdConfig.castleDieTime);
+            CacheAndInitCastle();
         }
 
         public void CreateEnemyWaves(LevelStaticData levelStaticData, Action onWin, Action onLose)
@@ -80,27 +82,13 @@ namespace CodeBase.Infrastructure.Factory
             _onLose = onLose;
 
             EnsureEnemyHolder();
+            EnsureWaveRunner();
+
             ResetWaveState();
 
-            EnsureWaveRunner();
             WaveRunner runner = _waveRunnerGo.GetComponent<WaveRunner>();
             runner.Init(levelStaticData, SpawnFromWave, OnAllWavesSpawned);
             runner.StartWaves();
-        }
-
-        private void EnsureEnemyHolder()
-        {
-            if (_enemyHolder == null)
-                _enemyHolder = Object.Instantiate(new GameObject("EnemyHolder"));
-        }
-
-        private void EnsureWaveRunner()
-        {
-            if (_waveRunnerGo != null)
-                return;
-
-            _waveRunnerGo = Object.Instantiate(new GameObject("WaveRunner"));
-            _waveRunnerGo.AddComponent<WaveRunner>();
         }
 
         private void ResetWaveState()
@@ -108,16 +96,71 @@ namespace CodeBase.Infrastructure.Factory
             _aliveEnemies = 0;
             _activeEnemies.Clear();
             _registry.Clear();
+
+            _allWavesSpawned = false;
+            _isGameOver = false;
+        }
+
+        private void CacheAndInitCastle()
+        {
+            if (_levelReferences == null)
+                return;
+
+            _castleCached = _levelReferences.CastleTarget as CastleTarget;
+
+            if (_castleCached != null)
+            {
+                _castleCached.Init(_tdConfig.castleMaxHp, _tdConfig.castleDieTime);
+
+                _castleCached.OnDie -= HandleCastleDie;
+                _castleCached.OnDie += HandleCastleDie;
+            }
+        }
+
+        private void HandleCastleDie(int _)
+        {
+            TriggerLose();
+        }
+
+        private void TriggerLose()
+        {
+            if (_isGameOver)
+                return;
+
+            _isGameOver = true;
+            StopWaves();
+            _onLose?.Invoke();
+        }
+
+        private void TriggerWin()
+        {
+            if (_isGameOver)
+                return;
+
+            _isGameOver = true;
+            StopWaves();
+            _onWin?.Invoke();
+        }
+
+        private void StopWaves()
+        {
+            if (_waveRunnerGo == null)
+                return;
+
+            WaveRunner runner = _waveRunnerGo.GetComponent<WaveRunner>();
+            if (runner != null)
+                runner.StopWaves();
         }
 
         private void OnAllWavesSpawned()
         {
+            _allWavesSpawned = true;
             CheckWin();
         }
 
         private void SpawnFromWave(CreatureTypeId typeId)
         {
-            if (typeId != CreatureTypeId.Ork && typeId != CreatureTypeId.Golem)
+            if (_isGameOver)
                 return;
 
             _ = CreateCreature(typeId);
@@ -125,6 +168,9 @@ namespace CodeBase.Infrastructure.Factory
 
         public async Task<Enemy> CreateCreature(CreatureTypeId typeId)
         {
+            if (_isGameOver)
+                return null;
+
             if (_levelReferences == null || _levelReferences.CastleTarget == null)
             {
                 Debug.LogError("GameFactory: LevelReferences or CastleTarget is not set");
@@ -151,7 +197,10 @@ namespace CodeBase.Infrastructure.Factory
 
                 enemy = InitEnemyByType(typeId, go, data, _levelReferences.CastleTarget);
                 if (enemy == null)
+                {
+                    Debug.LogError($"GameFactory: failed to init enemy for {typeId}. Check prefab components.");
                     return null;
+                }
             }
             else
             {
@@ -160,7 +209,14 @@ namespace CodeBase.Infrastructure.Factory
                 t.position = SpawnPosition();
                 enemy.gameObject.SetActive(true);
 
-                InitEnemyByType(typeId, enemy.gameObject, data, _levelReferences.CastleTarget);
+                Enemy reinit = InitEnemyByType(typeId, enemy.gameObject, data, _levelReferences.CastleTarget);
+                if (reinit == null)
+                {
+                    Debug.LogError($"GameFactory: failed to re-init enemy for {typeId}. Check prefab components.");
+                    return null;
+                }
+
+                enemy = reinit;
             }
 
             RegisterEnemy(enemy);
@@ -190,13 +246,20 @@ namespace CodeBase.Infrastructure.Factory
 
         internal void HandleEnemyDied(Enemy enemy, int coins)
         {
+            if (_isGameOver)
+                return;
+
             _persistentProgressService.Progress.gameData.PlayerData.BattleCoins += coins;
+
             UnregisterEnemy(enemy);
             CheckWin();
         }
 
         private void HandleEnemyReachedCastle(Enemy enemy)
         {
+            if (_isGameOver)
+                return;
+
             UnregisterEnemy(enemy);
             CheckWin();
         }
@@ -215,8 +278,29 @@ namespace CodeBase.Infrastructure.Factory
 
         private void CheckWin()
         {
+            if (_isGameOver)
+                return;
+
+            if (!_allWavesSpawned)
+                return;
+
             if (_aliveEnemies == 0)
-                _onWin?.Invoke();
+                TriggerWin();
+        }
+
+        private void EnsureEnemyHolder()
+        {
+            if (_enemyHolder == null)
+                _enemyHolder = Object.Instantiate(new GameObject("EnemyHolder"));
+        }
+
+        private void EnsureWaveRunner()
+        {
+            if (_waveRunnerGo != null)
+                return;
+
+            _waveRunnerGo = Object.Instantiate(new GameObject("WaveRunner"));
+            _waveRunnerGo.AddComponent<WaveRunner>();
         }
 
         private Vector3 SpawnPosition()
@@ -232,6 +316,18 @@ namespace CodeBase.Infrastructure.Factory
             switch (typeId)
             {
                 case CreatureTypeId.Ork:
+                    return go.GetComponent<EnemyAttacker>().Init(
+                        data.speed, data.coinsPerKill, data.health,
+                        data.attackPower, data.attackDelay, data.stopDistance,
+                        target, data.dieTime);
+
+                case CreatureTypeId.Lancer:
+                    return go.GetComponent<EnemyAttacker>().Init(
+                        data.speed, data.coinsPerKill, data.health,
+                        data.attackPower, data.attackDelay, data.stopDistance,
+                        target, data.dieTime);
+
+                case CreatureTypeId.Tree:
                     return go.GetComponent<EnemyAttacker>().Init(
                         data.speed, data.coinsPerKill, data.health,
                         data.attackPower, data.attackDelay, data.stopDistance,
@@ -266,6 +362,10 @@ namespace CodeBase.Infrastructure.Factory
                     return AssetAddress.OrkEnemy;
                 case CreatureTypeId.Golem:
                     return AssetAddress.GolemEnemy;
+                case CreatureTypeId.Lancer:
+                    return AssetAddress.LancerEnemy;
+                case CreatureTypeId.Tree:
+                    return AssetAddress.TreeEnemy;
             }
 
             return AssetAddress.OrkEnemy;
@@ -307,6 +407,11 @@ namespace CodeBase.Infrastructure.Factory
 
         public void Cleanup()
         {
+            if (_castleCached != null)
+                _castleCached.OnDie -= HandleCastleDie;
+
+            StopWaves();
+
             _assets.Cleanup();
 
             if (_waveRunnerGo != null)
@@ -318,8 +423,11 @@ namespace CodeBase.Infrastructure.Factory
         public async Task WarmUp()
         {
             await _assets.Load<GameObject>(AssetAddress.HUDPath);
+
             await _assets.Load<GameObject>(AssetAddress.GolemEnemy);
             await _assets.Load<GameObject>(AssetAddress.OrkEnemy);
+            await _assets.Load<GameObject>(AssetAddress.LancerEnemy);
+            await _assets.Load<GameObject>(AssetAddress.TreeEnemy);
         }
 
         private GameObject InstantiateRegistered(GameObject prefab, Vector3 at, Transform parent)

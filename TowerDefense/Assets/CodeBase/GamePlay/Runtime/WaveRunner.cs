@@ -10,6 +10,8 @@ public class WaveRunner : MonoBehaviour
     private Action<CreatureTypeId> _spawn;
     private Action _onCompleted;
 
+    private Coroutine _routine;
+
     public void Init(LevelStaticData levelData, Action<CreatureTypeId> spawn, Action onCompleted)
     {
         _levelData = levelData;
@@ -19,8 +21,19 @@ public class WaveRunner : MonoBehaviour
 
     public void StartWaves()
     {
+        StopWaves();
+        _routine = StartCoroutine(Run());
+    }
+
+    public void StopWaves()
+    {
+        if (_routine != null)
+        {
+            StopCoroutine(_routine);
+            _routine = null;
+        }
+
         StopAllCoroutines();
-        StartCoroutine(Run());
     }
 
     private IEnumerator Run()

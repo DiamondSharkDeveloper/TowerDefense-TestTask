@@ -7,6 +7,5 @@ namespace CodeBase.Infrastructure.Factory
         public const string OrkEnemy = "OrkEnemy";
         public const string TreeEnemy = "TreeEnemy";
         public const string LancerEnemy = "LancerEnemy";
-        public const string Cannon = "Cannon";
     }
 }

@@ -8,6 +8,7 @@ using CodeBase.Services.PersistentProgress;
 using CodeBase.Services.Randomizer;
 using CodeBase.Services.SaveLoad;
 using CodeBase.Services.StaticData;
+using CodeBase.UI.Windows;
 
 namespace CodeBase.Infrastructure.States
 {
@@ -33,10 +34,15 @@ namespace CodeBase.Infrastructure.States
             _states = new Dictionary<Type, IExitableState>
             {
                 [typeof(BootstrapState)] = new BootstrapState(this, sceneLoader, allServices),
-                [typeof(LoadLevelState)] = new LoadLevelState(this, sceneLoader, loadingCurtain,
+                [typeof(LoadLevelState)] = new LoadLevelState(
+                    this,
+                    sceneLoader,
+                    loadingCurtain,
                     allServices.Single<IGameFactory>(),
-                    allServices.Single<IPersistentProgressService>(), allServices.Single<IStaticDataService>(),
-                    allServices.Single<IInputService>()),
+                    allServices.Single<IPersistentProgressService>(),
+                    allServices.Single<IStaticDataService>(),
+                    allServices.Single<IInputService>(),
+                    allServices.Single<IWindowService>()),
                 [typeof(LoadProgressState)] = new LoadProgressState(this, allServices.Single<IStaticDataService>(),
                     allServices.Single<IPersistentProgressService>(), allServices.Single<ISaveLoadService>(),
                     allServices.Single<IRandomService>()),
