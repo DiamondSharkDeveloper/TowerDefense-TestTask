@@ -5,6 +5,7 @@ using CodeBase.Services.Input;
 using CodeBase.Services.PersistentProgress;
 using CodeBase.Services.Randomizer;
 using CodeBase.Services.SaveLoad;
+using CodeBase.Services.Score;
 using CodeBase.Services.StaticData;
 using CodeBase.StaticData;
 using CodeBase.UI.Services.Factory;
@@ -48,7 +49,7 @@ namespace CodeBase.Infrastructure.States
             RegisterAssetProvider();
             _services.RegisterSingle<IRandomService>(new RandomService());
             _services.RegisterSingle<IPersistentProgressService>(new PersistentProgressService());
-         
+            _services.RegisterSingle<IScoreService>(new ScoreService());
             _services.RegisterSingle<IUIFactory>(new UIFactory(
                 _services.Single<IAssetProvider>(),
                 _services.Single<IStaticDataService>(),
@@ -59,11 +60,12 @@ namespace CodeBase.Infrastructure.States
                 _services.Single<IStaticDataService>(),
                 _services.Single<IRandomService>(),
                 _services.Single<IPersistentProgressService>(),
-                _services.Single<IGameStateMachine>(),_services.Single<IWindowService>()
+                _services.Single<IGameStateMachine>(),_services.Single<IWindowService>(),_services.Single<IScoreService>()
             ));
             _services.RegisterSingle<ISaveLoadService>(new SaveLoadService(
                 _services.Single<IPersistentProgressService>(),
                 _services.Single<IGameFactory>()));
+            
         }
 
         private void RegisterInputService()

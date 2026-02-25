@@ -8,9 +8,11 @@ using CodeBase.Infrastructure.States;
 using CodeBase.Logic;
 using CodeBase.Services.PersistentProgress;
 using CodeBase.Services.Randomizer;
+using CodeBase.Services.Score;
 using CodeBase.Services.StaticData;
 using CodeBase.StaticData;
 using CodeBase.StaticData.TowerDefense;
+using CodeBase.UI.HUD;
 using CodeBase.UI.Windows;
 using Models.New_Enemy.Scripts;
 using UnityEngine;
@@ -25,12 +27,14 @@ namespace CodeBase.Infrastructure.Factory
         private readonly IRandomService _randomService;
         private readonly IPersistentProgressService _persistentProgressService;
         private readonly IWindowService _windowService;
+        private readonly IScoreService _scoreService;
 
         private LevelReferences _levelReferences;
         private TowerDefenseGameConfig _tdConfig;
 
         private GameObject _enemyHolder;
         private GameObject _waveRunnerGo;
+        private GameObject _hudInstance;
 
         private Action _onWin;
         private Action _onLose;
@@ -53,13 +57,15 @@ namespace CodeBase.Infrastructure.Factory
             IRandomService randomService,
             IPersistentProgressService persistentProgressService,
             IGameStateMachine stateMachine,
-            IWindowService windowService)
+            IWindowService windowService,
+            IScoreService scoreService)
         {
             _assets = assets;
             _staticData = staticData;
             _randomService = randomService;
             _persistentProgressService = persistentProgressService;
             _windowService = windowService;
+            _scoreService = scoreService;
         }
 
         public void SetLevelReferences(LevelReferences references)
@@ -74,6 +80,7 @@ namespace CodeBase.Infrastructure.Factory
             }
 
             CacheAndInitCastle();
+            CreateHudIfNeeded();
         }
 
         public void CreateEnemyWaves(LevelStaticData levelStaticData, Action onWin, Action onLose)
@@ -85,6 +92,8 @@ namespace CodeBase.Infrastructure.Factory
             EnsureWaveRunner();
 
             ResetWaveState();
+
+            _scoreService.Reset();
 
             WaveRunner runner = _waveRunnerGo.GetComponent<WaveRunner>();
             runner.Init(levelStaticData, SpawnFromWave, OnAllWavesSpawned);
@@ -115,6 +124,33 @@ namespace CodeBase.Infrastructure.Factory
                 _castleCached.OnDie -= HandleCastleDie;
                 _castleCached.OnDie += HandleCastleDie;
             }
+        }
+
+        private async void CreateHudIfNeeded()
+        {
+            if (_hudInstance != null)
+                return;
+
+            if (_levelReferences == null || _levelReferences.UiRoot == null)
+            {
+                Debug.LogError("LevelReferences.UiRoot is not set");
+                return;
+            }
+
+            GameObject hudPrefab = await _assets.Load<GameObject>(AssetAddress.HUDPath);
+            if (hudPrefab == null)
+            {
+                Debug.LogError("HUD prefab not found by address");
+                return;
+            }
+
+            _hudInstance = Object.Instantiate(hudPrefab, _levelReferences.UiRoot);
+
+            ScoreHudView scoreView = _hudInstance.GetComponentInChildren<ScoreHudView>(true);
+            if (scoreView == null)
+                Debug.LogError("ScoreHudView component not found on HUD prefab");
+            else
+                scoreView.Init(_scoreService);
         }
 
         private void HandleCastleDie(int _)
@@ -250,6 +286,8 @@ namespace CodeBase.Infrastructure.Factory
                 return;
 
             _persistentProgressService.Progress.gameData.PlayerData.BattleCoins += coins;
+
+            _scoreService.Add(coins);
 
             UnregisterEnemy(enemy);
             CheckWin();

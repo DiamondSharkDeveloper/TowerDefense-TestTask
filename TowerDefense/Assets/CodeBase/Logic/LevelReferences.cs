@@ -6,5 +6,7 @@ namespace CodeBase.Logic
     {
         public Transform EnemySpawnPoint;
         public Destructible CastleTarget;
+
+        public Transform UiRoot;
     }
 }
