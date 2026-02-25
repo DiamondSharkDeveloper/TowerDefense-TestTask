@@ -25,8 +25,6 @@ namespace Models.New_Enemy.Scripts
             EnemyInit(speed, stopDistance, target);
             DestructibleInit(health, dieTime, coinsPerKill);
 
-            navMeshAgent.stoppingDistance = attackDistance;
-
             if (weapon != null)
                 weapon.Init(hitDamage);
 
@@ -53,7 +51,7 @@ namespace Models.New_Enemy.Scripts
                 return false;
 
             Vector3 targetDirection = Target.transform.position - transform.position;
-            return targetDirection.magnitude <= attackDistance * 12;
+            return targetDirection.magnitude <= attackDistance;
         }
 
         private void TryAttack()

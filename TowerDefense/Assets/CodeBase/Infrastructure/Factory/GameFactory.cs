@@ -10,11 +10,11 @@ using CodeBase.Services.PersistentProgress;
 using CodeBase.Services.Randomizer;
 using CodeBase.Services.StaticData;
 using CodeBase.StaticData;
+using CodeBase.StaticData.TowerDefense;
 using CodeBase.UI.Windows;
 using Models.New_Enemy.Scripts;
 using UnityEngine;
 using Object = UnityEngine.Object;
-using CodeBase.StaticData.TowerDefense;
 
 namespace CodeBase.Infrastructure.Factory
 {
@@ -26,20 +26,22 @@ namespace CodeBase.Infrastructure.Factory
         private readonly IPersistentProgressService _persistentProgressService;
         private readonly IWindowService _windowService;
 
+        private LevelReferences _levelReferences;
+        private TowerDefenseGameConfig _tdConfig;
+
         private GameObject _enemyHolder;
-        private LevelStaticData _currentLevelData;
+        private GameObject _waveRunnerGo;
 
         private Action _onWin;
         private Action _onLose;
 
-        private LevelReferences _levelReferences;
-        private TowerDefenseGameConfig _tdConfig;
-
         private readonly Dictionary<CreatureTypeId, Queue<Enemy>> _pool = new Dictionary<CreatureTypeId, Queue<Enemy>>();
         private readonly Dictionary<CreatureTypeId, GameObject> _prefabs = new Dictionary<CreatureTypeId, GameObject>();
 
-        private int _enemyOnLevel;
         private readonly List<Enemy> _activeEnemies = new List<Enemy>();
+        private readonly EnemyRegistry _registry = new EnemyRegistry();
+
+        private int _aliveEnemies;
 
         public GameFactory(
             IAssetProvider assets,
@@ -74,64 +76,51 @@ namespace CodeBase.Infrastructure.Factory
 
         public void CreateEnemyWaves(LevelStaticData levelStaticData, Action onWin, Action onLose)
         {
-            _currentLevelData = levelStaticData;
             _onWin = onWin;
             _onLose = onLose;
 
+            EnsureEnemyHolder();
+            ResetWaveState();
+
+            EnsureWaveRunner();
+            WaveRunner runner = _waveRunnerGo.GetComponent<WaveRunner>();
+            runner.Init(levelStaticData, SpawnFromWave, OnAllWavesSpawned);
+            runner.StartWaves();
+        }
+
+        private void EnsureEnemyHolder()
+        {
             if (_enemyHolder == null)
                 _enemyHolder = Object.Instantiate(new GameObject("EnemyHolder"));
+        }
 
-            _enemyOnLevel = 0;
+        private void EnsureWaveRunner()
+        {
+            if (_waveRunnerGo != null)
+                return;
+
+            _waveRunnerGo = Object.Instantiate(new GameObject("WaveRunner"));
+            _waveRunnerGo.AddComponent<WaveRunner>();
+        }
+
+        private void ResetWaveState()
+        {
+            _aliveEnemies = 0;
             _activeEnemies.Clear();
-
-            foreach (EnemyWaveData enemyWaveData in levelStaticData.EnemyWaves)
-                CreateEnemyWave(enemyWaveData);
+            _registry.Clear();
         }
 
-        private async void CreateEnemyWave(EnemyWaveData enemyWaveData)
+        private void OnAllWavesSpawned()
         {
-            await Task.Delay((int)(enemyWaveData.AppearanceTime * 1000));
-
-            foreach (CreatureOnWaveData creatureOnWaveData in enemyWaveData.CreatureOnWaveData)
-            {
-                // Пока в этом тесте используем только Ork и Golem, остальные просто пропускаем
-                if (creatureOnWaveData._typeId != CreatureTypeId.Ork &&
-                    creatureOnWaveData._typeId != CreatureTypeId.Golem)
-                    continue;
-
-                for (int i = 0; i < creatureOnWaveData.CreatureCount; i++)
-                {
-                    Enemy enemy = await CreateCreature(creatureOnWaveData._typeId);
-                    if (enemy == null)
-                        continue;
-
-                    _enemyOnLevel++;
-
-                    enemy.OnDie += coins =>
-                    {
-                        _enemyOnLevel--;
-                        _persistentProgressService.Progress.gameData.PlayerData.BattleCoins += coins;
-                        _activeEnemies.Remove(enemy);
-                        CheckWin();
-                    };
-
-                    _activeEnemies.Add(enemy);
-                }
-            }
+            CheckWin();
         }
 
-        private void CheckWin()
+        private void SpawnFromWave(CreatureTypeId typeId)
         {
-            if (_enemyOnLevel == 0)
-                _onWin?.Invoke();
-        }
+            if (typeId != CreatureTypeId.Ork && typeId != CreatureTypeId.Golem)
+                return;
 
-        private Vector3 SpawnPosition()
-        {
-            if (_levelReferences != null && _levelReferences.EnemySpawnPoint != null)
-                return _levelReferences.EnemySpawnPoint.position;
-
-            return Vector3.zero;
+            _ = CreateCreature(typeId);
         }
 
         public async Task<Enemy> CreateCreature(CreatureTypeId typeId)
@@ -143,8 +132,14 @@ namespace CodeBase.Infrastructure.Factory
             }
 
             MonsterStaticData data = _staticData.ForMonster(typeId);
+            if (data == null)
+            {
+                Debug.LogError($"GameFactory: MonsterStaticData not found for {typeId}");
+                return null;
+            }
 
             Enemy enemy = TakeFromPool(typeId);
+
             if (enemy == null)
             {
                 GameObject prefab = await GetPrefab(typeId);
@@ -152,7 +147,6 @@ namespace CodeBase.Infrastructure.Factory
                     return null;
 
                 GameObject go = InstantiateRegistered(prefab, SpawnPosition(), _enemyHolder.transform);
-
                 SetupPooledObject(go, typeId);
 
                 enemy = InitEnemyByType(typeId, go, data, _levelReferences.CastleTarget);
@@ -166,19 +160,71 @@ namespace CodeBase.Infrastructure.Factory
                 t.position = SpawnPosition();
                 enemy.gameObject.SetActive(true);
 
-                
                 InitEnemyByType(typeId, enemy.gameObject, data, _levelReferences.CastleTarget);
             }
 
-           
+            RegisterEnemy(enemy);
+
             EnemyGoal goal = enemy.GetComponent<EnemyGoal>();
             if (goal == null)
                 goal = enemy.gameObject.AddComponent<EnemyGoal>();
 
             float reachDistance = _tdConfig != null ? _tdConfig.enemyReachDistance : Mathf.Max(0.25f, data.stopDistance);
-            goal.Init(enemy, _levelReferences.CastleTarget, data.attackPower, reachDistance);
+            goal.Init(enemy, _levelReferences.CastleTarget, data.attackPower, reachDistance, HandleEnemyReachedCastle);
 
             return enemy;
+        }
+
+        private void RegisterEnemy(Enemy enemy)
+        {
+            _aliveEnemies++;
+            _activeEnemies.Add(enemy);
+            _registry.Register(enemy);
+
+            EnemyLifecycle lifecycle = enemy.GetComponent<EnemyLifecycle>();
+            if (lifecycle == null)
+                lifecycle = enemy.gameObject.AddComponent<EnemyLifecycle>();
+
+            lifecycle.Init(this, enemy);
+        }
+
+        internal void HandleEnemyDied(Enemy enemy, int coins)
+        {
+            _persistentProgressService.Progress.gameData.PlayerData.BattleCoins += coins;
+            UnregisterEnemy(enemy);
+            CheckWin();
+        }
+
+        private void HandleEnemyReachedCastle(Enemy enemy)
+        {
+            UnregisterEnemy(enemy);
+            CheckWin();
+        }
+
+        private void UnregisterEnemy(Enemy enemy)
+        {
+            if (enemy == null)
+                return;
+
+            if (_activeEnemies.Remove(enemy))
+            {
+                _aliveEnemies = Mathf.Max(0, _aliveEnemies - 1);
+                _registry.Unregister(enemy);
+            }
+        }
+
+        private void CheckWin()
+        {
+            if (_aliveEnemies == 0)
+                _onWin?.Invoke();
+        }
+
+        private Vector3 SpawnPosition()
+        {
+            if (_levelReferences != null && _levelReferences.EnemySpawnPoint != null)
+                return _levelReferences.EnemySpawnPoint.position;
+
+            return Vector3.zero;
         }
 
         private Enemy InitEnemyByType(CreatureTypeId typeId, GameObject go, MonsterStaticData data, Destructible target)
@@ -238,12 +284,6 @@ namespace CodeBase.Infrastructure.Factory
             if (go == null)
                 return;
 
-            Enemy enemy = go.GetComponent<Enemy>();
-            if (enemy != null)
-            {
-                enemy.OnDie = null; 
-            }
-
             go.transform.SetParent(_enemyHolder.transform);
             go.SetActive(false);
 
@@ -268,12 +308,16 @@ namespace CodeBase.Infrastructure.Factory
         public void Cleanup()
         {
             _assets.Cleanup();
+
+            if (_waveRunnerGo != null)
+                Object.Destroy(_waveRunnerGo);
+
+            _waveRunnerGo = null;
         }
 
         public async Task WarmUp()
         {
             await _assets.Load<GameObject>(AssetAddress.HUDPath);
-            
             await _assets.Load<GameObject>(AssetAddress.GolemEnemy);
             await _assets.Load<GameObject>(AssetAddress.OrkEnemy);
         }
