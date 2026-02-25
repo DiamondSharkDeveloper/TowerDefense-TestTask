@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace CodeBase.GamePlay.Enemy
+namespace CodeBase.GamePlay
 {
     public class EnemyAnimationController : MonoBehaviour, IEnemyAnimationController
     {

@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using CodeBase.Enums;
+using CodeBase.GamePlay;
 using CodeBase.GamePlay.Enemys;
 using CodeBase.Infrastructure.AssetManagement;
 using CodeBase.Infrastructure.States;
 using CodeBase.Logic;
+using CodeBase.Services.Enemies;
 using CodeBase.Services.PersistentProgress;
 using CodeBase.Services.Randomizer;
 using CodeBase.Services.Score;
@@ -28,22 +30,23 @@ namespace CodeBase.Infrastructure.Factory
         private readonly IPersistentProgressService _persistentProgressService;
         private readonly IWindowService _windowService;
         private readonly IScoreService _scoreService;
+        private readonly IEnemyRegistryService _enemyRegistryService;
 
         private LevelReferences _levelReferences;
         private TowerDefenseGameConfig _tdConfig;
 
         private GameObject _enemyHolder;
         private GameObject _waveRunnerGo;
+
         private GameObject _hudInstance;
+        private GameObject _tower1Instance;
+        private GameObject _tower2Instance;
 
         private Action _onWin;
         private Action _onLose;
 
         private readonly Dictionary<CreatureTypeId, Queue<Enemy>> _pool = new Dictionary<CreatureTypeId, Queue<Enemy>>();
         private readonly Dictionary<CreatureTypeId, GameObject> _prefabs = new Dictionary<CreatureTypeId, GameObject>();
-
-        private readonly List<Enemy> _activeEnemies = new List<Enemy>();
-        private readonly EnemyRegistry _registry = new EnemyRegistry();
 
         private int _aliveEnemies;
         private bool _allWavesSpawned;
@@ -58,7 +61,8 @@ namespace CodeBase.Infrastructure.Factory
             IPersistentProgressService persistentProgressService,
             IGameStateMachine stateMachine,
             IWindowService windowService,
-            IScoreService scoreService)
+            IScoreService scoreService,
+            IEnemyRegistryService enemyRegistryService)
         {
             _assets = assets;
             _staticData = staticData;
@@ -66,6 +70,7 @@ namespace CodeBase.Infrastructure.Factory
             _persistentProgressService = persistentProgressService;
             _windowService = windowService;
             _scoreService = scoreService;
+            _enemyRegistryService = enemyRegistryService;
         }
 
         public void SetLevelReferences(LevelReferences references)
@@ -80,7 +85,9 @@ namespace CodeBase.Infrastructure.Factory
             }
 
             CacheAndInitCastle();
+
             CreateHudIfNeeded();
+            CreateTowersIfNeeded();
         }
 
         public void CreateEnemyWaves(LevelStaticData levelStaticData, Action onWin, Action onLose)
@@ -103,11 +110,10 @@ namespace CodeBase.Infrastructure.Factory
         private void ResetWaveState()
         {
             _aliveEnemies = 0;
-            _activeEnemies.Clear();
-            _registry.Clear();
-
             _allWavesSpawned = false;
             _isGameOver = false;
+
+            _enemyRegistryService.Registry.Clear();
         }
 
         private void CacheAndInitCastle()
@@ -124,33 +130,6 @@ namespace CodeBase.Infrastructure.Factory
                 _castleCached.OnDie -= HandleCastleDie;
                 _castleCached.OnDie += HandleCastleDie;
             }
-        }
-
-        private async void CreateHudIfNeeded()
-        {
-            if (_hudInstance != null)
-                return;
-
-            if (_levelReferences == null || _levelReferences.UiRoot == null)
-            {
-                Debug.LogError("LevelReferences.UiRoot is not set");
-                return;
-            }
-
-            GameObject hudPrefab = await _assets.Load<GameObject>(AssetAddress.HUDPath);
-            if (hudPrefab == null)
-            {
-                Debug.LogError("HUD prefab not found by address");
-                return;
-            }
-
-            _hudInstance = Object.Instantiate(hudPrefab, _levelReferences.UiRoot);
-
-            ScoreHudView scoreView = _hudInstance.GetComponentInChildren<ScoreHudView>(true);
-            if (scoreView == null)
-                Debug.LogError("ScoreHudView component not found on HUD prefab");
-            else
-                scoreView.Init(_scoreService);
         }
 
         private void HandleCastleDie(int _)
@@ -270,8 +249,7 @@ namespace CodeBase.Infrastructure.Factory
         private void RegisterEnemy(Enemy enemy)
         {
             _aliveEnemies++;
-            _activeEnemies.Add(enemy);
-            _registry.Register(enemy);
+            _enemyRegistryService.Registry.Register(enemy);
 
             EnemyLifecycle lifecycle = enemy.GetComponent<EnemyLifecycle>();
             if (lifecycle == null)
@@ -286,7 +264,6 @@ namespace CodeBase.Infrastructure.Factory
                 return;
 
             _persistentProgressService.Progress.gameData.PlayerData.BattleCoins += coins;
-
             _scoreService.Add(coins);
 
             UnregisterEnemy(enemy);
@@ -307,11 +284,8 @@ namespace CodeBase.Infrastructure.Factory
             if (enemy == null)
                 return;
 
-            if (_activeEnemies.Remove(enemy))
-            {
-                _aliveEnemies = Mathf.Max(0, _aliveEnemies - 1);
-                _registry.Unregister(enemy);
-            }
+            _aliveEnemies = Mathf.Max(0, _aliveEnemies - 1);
+            _enemyRegistryService.Registry.Unregister(enemy);
         }
 
         private void CheckWin()
@@ -354,17 +328,7 @@ namespace CodeBase.Infrastructure.Factory
             switch (typeId)
             {
                 case CreatureTypeId.Ork:
-                    return go.GetComponent<EnemyAttacker>().Init(
-                        data.speed, data.coinsPerKill, data.health,
-                        data.attackPower, data.attackDelay, data.stopDistance,
-                        target, data.dieTime);
-
                 case CreatureTypeId.Lancer:
-                    return go.GetComponent<EnemyAttacker>().Init(
-                        data.speed, data.coinsPerKill, data.health,
-                        data.attackPower, data.attackDelay, data.stopDistance,
-                        target, data.dieTime);
-
                 case CreatureTypeId.Tree:
                     return go.GetComponent<EnemyAttacker>().Init(
                         data.speed, data.coinsPerKill, data.health,
@@ -396,14 +360,10 @@ namespace CodeBase.Infrastructure.Factory
         {
             switch (typeId)
             {
-                case CreatureTypeId.Ork:
-                    return AssetAddress.OrkEnemy;
-                case CreatureTypeId.Golem:
-                    return AssetAddress.GolemEnemy;
-                case CreatureTypeId.Lancer:
-                    return AssetAddress.LancerEnemy;
-                case CreatureTypeId.Tree:
-                    return AssetAddress.TreeEnemy;
+                case CreatureTypeId.Ork: return AssetAddress.OrkEnemy;
+                case CreatureTypeId.Golem: return AssetAddress.GolemEnemy;
+                case CreatureTypeId.Lancer: return AssetAddress.LancerEnemy;
+                case CreatureTypeId.Tree: return AssetAddress.TreeEnemy;
             }
 
             return AssetAddress.OrkEnemy;
@@ -443,19 +403,98 @@ namespace CodeBase.Infrastructure.Factory
             pooled.SetReturnAction(obj => ReturnToPool(typeId, obj));
         }
 
+        private async void CreateHudIfNeeded()
+        {
+            if (_hudInstance != null)
+                return;
+
+            if (_levelReferences == null || _levelReferences.UiRoot == null)
+                return;
+
+            GameObject hudPrefab = await _assets.Load<GameObject>(AssetAddress.HUDPath);
+            if (hudPrefab == null)
+            {
+                Debug.LogError("HUD prefab not found by address");
+                return;
+            }
+
+            _hudInstance = Object.Instantiate(hudPrefab, _levelReferences.UiRoot);
+
+            ScoreHudView scoreView = _hudInstance.GetComponentInChildren<ScoreHudView>(true);
+            if (scoreView != null)
+                scoreView.Init(_scoreService);
+        }
+
+        private async void CreateTowersIfNeeded()
+        {
+            if (_tower1Instance != null || _tower2Instance != null)
+                return;
+
+            if (_levelReferences == null)
+                return;
+
+            if (_levelReferences.Tower1SpawnPoint != null)
+                _tower1Instance = await CreateTower(_levelReferences.Tower1SpawnPoint, TowerTypeId.Tower1, AssetAddress.Tower1);
+
+            if (_levelReferences.Tower2SpawnPoint != null)
+                _tower2Instance = await CreateTower(_levelReferences.Tower2SpawnPoint, TowerTypeId.Tower2, AssetAddress.Tower2);
+        }
+
+        private async Task<GameObject> CreateTower(Transform point, TowerTypeId id, string address)
+        {
+            GameObject prefab = await _assets.Load<GameObject>(address);
+            if (prefab == null)
+            {
+                Debug.LogError($"Tower prefab not found: {address}");
+                return null;
+            }
+
+            TowerStaticData data = _staticData.ForTower(id);
+            if (data == null)
+            {
+                Debug.LogError($"TowerStaticData not found for {id}");
+                return null;
+            }
+
+            GameObject instance = Object.Instantiate(prefab, point.position, point.rotation);
+
+            TowerBehaviour tower = instance.GetComponent<TowerBehaviour>();
+            if (tower == null)
+            {
+                Debug.LogError("TowerBehaviour component missing on tower prefab");
+                return instance;
+            }
+
+            tower.Init(data, _enemyRegistryService.Registry);
+            await tower.InitVisuals(_assets);
+            return instance;
+        }
+
         public void Cleanup()
         {
             if (_castleCached != null)
                 _castleCached.OnDie -= HandleCastleDie;
 
             StopWaves();
+            _enemyRegistryService.Registry.Clear();
 
-            _assets.Cleanup();
+            if (_hudInstance != null)
+                Object.Destroy(_hudInstance);
+            _hudInstance = null;
+
+            if (_tower1Instance != null)
+                Object.Destroy(_tower1Instance);
+            _tower1Instance = null;
+
+            if (_tower2Instance != null)
+                Object.Destroy(_tower2Instance);
+            _tower2Instance = null;
 
             if (_waveRunnerGo != null)
                 Object.Destroy(_waveRunnerGo);
-
             _waveRunnerGo = null;
+
+            _assets.Cleanup();
         }
 
         public async Task WarmUp()
@@ -466,6 +505,9 @@ namespace CodeBase.Infrastructure.Factory
             await _assets.Load<GameObject>(AssetAddress.OrkEnemy);
             await _assets.Load<GameObject>(AssetAddress.LancerEnemy);
             await _assets.Load<GameObject>(AssetAddress.TreeEnemy);
+
+            await _assets.Load<GameObject>(AssetAddress.Tower1);
+            await _assets.Load<GameObject>(AssetAddress.Tower2);
         }
 
         private GameObject InstantiateRegistered(GameObject prefab, Vector3 at, Transform parent)

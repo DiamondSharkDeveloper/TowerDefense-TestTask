@@ -21,26 +21,37 @@ MonoBehaviour:
     m_Address: HUD
     m_ReadOnly: 0
     m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 820fb26412c75204184fec1bb3442618
     m_Address: GolemEnemy
     m_ReadOnly: 0
     m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 70987f85ffe4f7b4484ccb28167d8604
     m_Address: OrkEnemy
     m_ReadOnly: 0
     m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 0e0bee58ca2c94841a5e5858ebb73825
     m_Address: TreeEnemy
     m_ReadOnly: 0
     m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: d9909a211c18344408fcf648df9ba8c9
     m_Address: LancerEnemy
     m_ReadOnly: 0
     m_SerializedLabels: []
-  - m_GUID: d2e3577aed09ebe44bb4a7079cce0796
-    m_Address: Cannon
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 027c5fa827340754f8b4c873b5745651
+    m_Address: Tower1
     m_ReadOnly: 0
     m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e0f515ebb6af1d4469da63337a7a8ece
+    m_Address: Tower2
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: f23e817e6bcda384cb585f0cf1553895, type: 2}
   m_SchemaSet:

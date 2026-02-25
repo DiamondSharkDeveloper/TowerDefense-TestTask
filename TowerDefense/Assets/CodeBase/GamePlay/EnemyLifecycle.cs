@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace CodeBase.GamePlay.Enemys
+namespace CodeBase.GamePlay
 {
     public class EnemyLifecycle : MonoBehaviour
     {

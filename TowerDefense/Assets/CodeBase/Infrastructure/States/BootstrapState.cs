@@ -1,6 +1,7 @@
 using CodeBase.Infrastructure.AssetManagement;
 using CodeBase.Infrastructure.Factory;
 using CodeBase.Services;
+using CodeBase.Services.Enemies;
 using CodeBase.Services.Input;
 using CodeBase.Services.PersistentProgress;
 using CodeBase.Services.Randomizer;
@@ -50,6 +51,7 @@ namespace CodeBase.Infrastructure.States
             _services.RegisterSingle<IRandomService>(new RandomService());
             _services.RegisterSingle<IPersistentProgressService>(new PersistentProgressService());
             _services.RegisterSingle<IScoreService>(new ScoreService());
+            _services.RegisterSingle<IEnemyRegistryService>(new EnemyRegistryService());
             _services.RegisterSingle<IUIFactory>(new UIFactory(
                 _services.Single<IAssetProvider>(),
                 _services.Single<IStaticDataService>(),
@@ -60,7 +62,10 @@ namespace CodeBase.Infrastructure.States
                 _services.Single<IStaticDataService>(),
                 _services.Single<IRandomService>(),
                 _services.Single<IPersistentProgressService>(),
-                _services.Single<IGameStateMachine>(),_services.Single<IWindowService>(),_services.Single<IScoreService>()
+                _stateMachine,
+                _services.Single<IWindowService>(),
+                _services.Single<IScoreService>(),
+                _services.Single<IEnemyRegistryService>()
             ));
             _services.RegisterSingle<ISaveLoadService>(new SaveLoadService(
                 _services.Single<IPersistentProgressService>(),

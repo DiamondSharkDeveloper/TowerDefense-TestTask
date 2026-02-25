@@ -13,13 +13,16 @@ namespace CodeBase.StaticData
         private const string LevelsDataPath = "Static Data/Levels";
         private const string MonstersDataPath = "Static Data/Monsters";
         private const string StaticDataWindowPath = "Static Data/UI/WindowStaticData";
+
         private const string TowerDefenseConfigPath = "Static Data/TowerDefense/TowerDefenseGameConfig";
+        private const string TowersDataPath = "Static Data/TowerDefense/Towers";
 
         private Dictionary<string, LevelStaticData> _levels;
         private Dictionary<CreatureTypeId, MonsterStaticData> _monsterStaticDatas;
         private Dictionary<WindowId, WindowConfig> _windowConfigs;
 
         private TowerDefenseGameConfig _towerDefenseConfig;
+        private Dictionary<TowerTypeId, TowerStaticData> _towerStaticDatas;
 
         public void Load()
         {
@@ -37,6 +40,10 @@ namespace CodeBase.StaticData
                 .ToDictionary(x => x.id, x => x);
 
             _towerDefenseConfig = Resources.Load<TowerDefenseGameConfig>(TowerDefenseConfigPath);
+
+            _towerStaticDatas = Resources
+                .LoadAll<TowerStaticData>(TowersDataPath)
+                .ToDictionary(x => x.id, x => x);
         }
 
         public MonsterStaticData ForMonster(CreatureTypeId typeId) =>
@@ -56,5 +63,10 @@ namespace CodeBase.StaticData
 
         public TowerDefenseGameConfig TowerDefenseConfig() =>
             _towerDefenseConfig;
+
+        public TowerStaticData ForTower(TowerTypeId id) =>
+            _towerStaticDatas != null && _towerStaticDatas.TryGetValue(id, out TowerStaticData data)
+                ? data
+                : null;
     }
 }

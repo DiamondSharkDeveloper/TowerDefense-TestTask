@@ -24,7 +24,8 @@ namespace CodeBase.Infrastructure.States
 
         private PlayerData _playerData;
 
-        public LoadLevelState(GameStateMachine gameStateMachine,
+        public LoadLevelState(
+            GameStateMachine gameStateMachine,
             SceneLoader sceneLoader,
             LoadingCurtain loadingCurtain,
             IGameFactory gameFactory,
@@ -43,12 +44,14 @@ namespace CodeBase.Infrastructure.States
             _windowService = windowService;
         }
 
-        public void Enter(string isGameRun)
+        public void Enter(string sceneName)
         {
+            Time.timeScale = 1f;
+
             _loadingCurtain.Show();
             _gameFactory.Cleanup();
-            _gameFactory.WarmUp();
-            _sceneLoader.Load(isGameRun, OnLoaded);
+
+            _sceneLoader.Load(sceneName, OnLoaded);
         }
 
         public void Exit() =>
@@ -68,6 +71,13 @@ namespace CodeBase.Infrastructure.States
             _playerData = _progressService.Progress.gameData.PlayerData;
 
             LevelStaticData levelData = _staticData.ForLevel(_playerData.CurrentLevel);
+            if (levelData == null)
+            {
+                Debug.LogError($"LevelStaticData not found for key: {_playerData.CurrentLevel}");
+                return;
+            }
+
+            await _gameFactory.WarmUp();
 
             LevelReferences refs = Object.FindObjectOfType<LevelReferences>();
             if (refs == null)
@@ -77,10 +87,7 @@ namespace CodeBase.Infrastructure.States
             }
 
             _gameFactory.SetLevelReferences(refs);
-
             _gameFactory.CreateEnemyWaves(levelData, HandleWin, HandleLose);
-
-            await Task.CompletedTask;
         }
 
         private void HandleWin()

@@ -1,4 +1,5 @@
-﻿using CodeBase.GamePlay.Enemys;
+﻿using CodeBase.GamePlay;
+using CodeBase.GamePlay.Enemys;
 using UnityEngine;
 
 namespace Models.New_Enemy.Scripts

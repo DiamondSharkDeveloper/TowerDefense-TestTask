@@ -1,4 +1,4 @@
-﻿namespace CodeBase.GamePlay.Enemy
+﻿namespace CodeBase.GamePlay
 {
     public interface IEnemyAnimationController
     {

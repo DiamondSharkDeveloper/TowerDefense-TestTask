@@ -1,8 +1,7 @@
-﻿using CodeBase.GamePlay.Enemy;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.AI;
 
-namespace CodeBase.GamePlay.Enemys
+namespace CodeBase.GamePlay
 {
     public class Enemy : Destructible
     {
