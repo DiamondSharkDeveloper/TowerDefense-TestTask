@@ -1,54 +1,74 @@
-﻿using UnityEngine;
+﻿using CodeBase.Infrastructure.Factory;
+using UnityEngine;
 
-namespace CodeBase.GamePlay
+namespace CodeBase.GamePlay.Enemys
 {
     public class EnemyLifecycle : MonoBehaviour
     {
-        private GameFactoryProxy _proxy;
+        private GameFactory _factory;
         private Enemy _enemy;
+        private Destructible _destructible;
 
-        public void Init(CodeBase.Infrastructure.Factory.GameFactory factory, Enemy enemy)
+        private bool _subscribed;
+
+        public void Init(GameFactory factory, Enemy enemy)
         {
+            Unsubscribe();
+
+            _factory = factory;
             _enemy = enemy;
 
-            _proxy = GetComponent<GameFactoryProxy>();
-            if (_proxy == null)
-                _proxy = gameObject.AddComponent<GameFactoryProxy>();
+            _destructible = enemy as Destructible;
+            if (_destructible == null)
+                _destructible = enemy.GetComponent<Destructible>();
 
-            _proxy.SetFactory(factory);
-        }
-
-        private void OnEnable()
-        {
-            if (_enemy != null)
-                _enemy.OnDie += OnDie;
+            Subscribe();
         }
 
         private void OnDisable()
         {
-            if (_enemy != null)
-                _enemy.OnDie -= OnDie;
+            // Important for pooling: if object is returned to pool, we must not keep old subscriptions.
+            Unsubscribe();
+        }
+
+        private void Subscribe()
+        {
+            if (_subscribed)
+                return;
+
+            if (_factory == null || _enemy == null || _destructible == null)
+            {
+                Debug.LogError("EnemyLifecycle: missing references (factory/enemy/destructible). Check enemy prefab setup.");
+                return;
+            }
+
+            _destructible.OnDie -= OnDie;
+            _destructible.OnDie += OnDie;
+
+            _subscribed = true;
+        }
+
+        private void Unsubscribe()
+        {
+            if (!_subscribed)
+                return;
+
+            if (_destructible != null)
+                _destructible.OnDie -= OnDie;
+
+            _subscribed = false;
         }
 
         private void OnDie(int coins)
         {
-            _proxy.NotifyEnemyDied(_enemy, coins);
-        }
-    }
+            if (_factory == null || _enemy == null)
+                return;
 
-    public class GameFactoryProxy : MonoBehaviour
-    {
-        private CodeBase.Infrastructure.Factory.GameFactory _factory;
+            // This is the only place where "kill" is reported to factory.
+            _factory.HandleEnemyDied(_enemy, coins);
 
-        public void SetFactory(CodeBase.Infrastructure.Factory.GameFactory factory)
-        {
-            _factory = factory;
-        }
-
-        public void NotifyEnemyDied(Enemy enemy, int coins)
-        {
-            if (_factory != null)
-                _factory.HandleEnemyDied(enemy, coins);
+            // Do not unsubscribe here. Death flow might be delayed (die animation) and object can be pooled later.
+            // OnDisable will handle cleanup when pooled.
         }
     }
 }

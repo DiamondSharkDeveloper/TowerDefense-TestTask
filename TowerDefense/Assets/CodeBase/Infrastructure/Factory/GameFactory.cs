@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using CodeBase.Enums;
 using CodeBase.GamePlay;
+using CodeBase.GamePlay.Enemys;
 using CodeBase.Infrastructure.AssetManagement;
 using CodeBase.Infrastructure.States;
 using CodeBase.Logic;

@@ -98,13 +98,12 @@ namespace CodeBase.Infrastructure.States
 
             _isEndHandled = true;
 
-            Time.timeScale = 0f;
+            await Task.Delay(1000);
             _gameFactory.ShowEndGameOverlay(true);
 
             await Task.Delay(5000);
-
-            Time.timeScale = 1f;
-            _windowService.Open(WindowId.MainMenu);
+            
+            _stateMachine.Enter<BootstrapState>();
         }
 
         private async void HandleLose()
@@ -120,7 +119,7 @@ namespace CodeBase.Infrastructure.States
             await Task.Delay(5000);
 
             Time.timeScale = 1f;
-            _windowService.Open(WindowId.MainMenu);
+            _stateMachine.Enter<BootstrapState>();
         }
     }
 }

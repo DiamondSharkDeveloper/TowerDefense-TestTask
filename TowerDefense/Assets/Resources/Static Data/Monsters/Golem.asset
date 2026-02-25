@@ -19,4 +19,4 @@ MonoBehaviour:
   attackPower: 40
   attackDelay: 7
   stopDistance: 1
-  dieTime: 1
+  dieTime: 3

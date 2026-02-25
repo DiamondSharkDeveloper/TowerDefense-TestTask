@@ -18,7 +18,27 @@ MonoBehaviour:
     CreatureOnWaveData:
     - _typeId: 0
       CreatureCount: 1
+  - AppearanceTime: 5
+    CreatureOnWaveData:
+    - _typeId: 1
+      CreatureCount: 4
+  - AppearanceTime: 10
+    CreatureOnWaveData:
+    - _typeId: 0
+      CreatureCount: 3
+  - AppearanceTime: 10
+    CreatureOnWaveData:
+    - _typeId: 2
+      CreatureCount: 5
   - AppearanceTime: 10
     CreatureOnWaveData:
     - _typeId: 3
       CreatureCount: 1
+  - AppearanceTime: 20
+    CreatureOnWaveData:
+    - _typeId: 3
+      CreatureCount: 1
+    - _typeId: 1
+      CreatureCount: 2
+    - _typeId: 0
+      CreatureCount: 2
