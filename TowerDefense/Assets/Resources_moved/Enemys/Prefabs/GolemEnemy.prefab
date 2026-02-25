@@ -12,9 +12,9 @@ GameObject:
   - component: {fileID: 406268038907620896}
   - component: {fileID: 5212410822386843160}
   - component: {fileID: 8990178588149088649}
-  - component: {fileID: 5018360907213599658}
   - component: {fileID: 862570159216754881}
   - component: {fileID: 4701062021146325993}
+  - component: {fileID: 3087126555973612085}
   m_Layer: 0
   m_Name: GolemEnemy
   m_TagString: Player
@@ -110,28 +110,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &5018360907213599658
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 957901430046368944}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f0613d9614dd7ae4591ad8d7f0c39044, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  explosionPrefab: {fileID: 0}
-  hitPointsCurrent: 0
-  hitPoints: 100
-  navMeshAgent: {fileID: 5212410822386843160}
-  animationController: {fileID: 4701062021146325993}
-  shootDelay: 5
-  weapon: {fileID: 1086544450849123085, guid: 171ab4470cc622f40990896ccafc29d7, type: 3}
-  bulletDamage: 10
-  shootPower: 100000
-  bulletPrefab: {fileID: 8841777790983629270, guid: 171ab4470cc622f40990896ccafc29d7, type: 3}
 --- !u!136 &862570159216754881
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -168,6 +146,26 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   animator: {fileID: 8990178588149088649}
+--- !u!114 &3087126555973612085
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 957901430046368944}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b75d0b77683c4a0abe1c221fb2beafa9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  explosionPrefab: {fileID: 0}
+  hitPointsCurrent: 0
+  hitPoints: 150
+  navMeshAgent: {fileID: 5212410822386843160}
+  animationController: {fileID: 4701062021146325993}
+  weapon: {fileID: 0}
+  hitDamage: 30
+  attackDistance: 5
 --- !u!1 &3471641390960962194
 GameObject:
   m_ObjectHideFlags: 0
@@ -336,9 +334,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
-  m_PreserveAspect: 1
+  m_Sprite: {fileID: 21300000, guid: 0292f18e17c3d484abd865a4cbbb3278, type: 3}
+  m_Type: 3
+  m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 0
   m_FillAmount: 1
@@ -360,7 +358,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   healthBar: {fileID: 6675964688690851570}
   rotateBar: 1
-  owner: {fileID: 5018360907213599658}
+  owner: {fileID: 3087126555973612085}
 --- !u!1 &4465646016728168429
 GameObject:
   m_ObjectHideFlags: 0

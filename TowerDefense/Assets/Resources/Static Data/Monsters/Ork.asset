@@ -18,5 +18,5 @@ MonoBehaviour:
   health: 100
   attackPower: 20
   attackDelay: 3
-  stopDistance: 5
-  dieTime: 6
+  stopDistance: 1
+  dieTime: 1

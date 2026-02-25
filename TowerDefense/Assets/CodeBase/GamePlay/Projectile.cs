@@ -2,7 +2,7 @@
 using CodeBase.GamePlay.Enemys;
 using UnityEngine;
 
-namespace CodeBase.GamePlay
+namespace CodeBase.GamePlay.Towers
 {
     public class Projectile : MonoBehaviour
     {
@@ -23,6 +23,17 @@ namespace CodeBase.GamePlay
         private void Awake()
         {
             _self = transform;
+
+            Collider c = GetComponent<Collider>();
+            if (c != null)
+                c.enabled = false;
+
+            Rigidbody rb = GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.isKinematic = true;
+                rb.useGravity = false;
+            }
         }
 
         public void InitReturn(Action<Projectile> returnToPool)
@@ -37,6 +48,7 @@ namespace CodeBase.GamePlay
             _damage = damage;
 
             _useAoe = false;
+            _registry = null;
         }
 
         public void FireAoe(Enemy target, float speed, float damage, EnemyRegistry registry, float aoeRadius, int aoeMaxTargets)
@@ -93,6 +105,7 @@ namespace CodeBase.GamePlay
 
             int applied = 0;
             var active = _registry.Active;
+
             for (int i = 0; i < active.Count; i++)
             {
                 if (applied >= _aoeMaxTargets)

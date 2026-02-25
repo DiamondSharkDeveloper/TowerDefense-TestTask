@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Tree
   m_EditorClassIdentifier: 
   id: 2
-  speed: 10
+  speed: 9
   coinsPerKill: 5
   health: 1
   attackPower: 10
   attackDelay: 0
   stopDistance: 0
-  dieTime: 0
+  dieTime: 1

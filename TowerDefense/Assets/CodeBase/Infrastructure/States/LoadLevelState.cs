@@ -22,7 +22,7 @@ namespace CodeBase.Infrastructure.States
         private readonly IInputService _inputService;
         private readonly IWindowService _windowService;
 
-        private PlayerData _playerData;
+        private bool _isEndHandled;
 
         public LoadLevelState(
             GameStateMachine gameStateMachine,
@@ -47,6 +47,7 @@ namespace CodeBase.Infrastructure.States
         public void Enter(string sceneName)
         {
             Time.timeScale = 1f;
+            _isEndHandled = false;
 
             _loadingCurtain.Show();
             _gameFactory.Cleanup();
@@ -68,12 +69,12 @@ namespace CodeBase.Infrastructure.States
 
         private async Task InitLevel()
         {
-            _playerData = _progressService.Progress.gameData.PlayerData;
+            string levelKey = _progressService.Progress.gameData.PlayerData.CurrentLevel;
 
-            LevelStaticData levelData = _staticData.ForLevel(_playerData.CurrentLevel);
+            LevelStaticData levelData = _staticData.ForLevel(levelKey);
             if (levelData == null)
             {
-                Debug.LogError($"LevelStaticData not found for key: {_playerData.CurrentLevel}");
+                Debug.LogError($"LevelStaticData not found for key: {levelKey}");
                 return;
             }
 
@@ -90,18 +91,36 @@ namespace CodeBase.Infrastructure.States
             _gameFactory.CreateEnemyWaves(levelData, HandleWin, HandleLose);
         }
 
-        private void HandleWin()
+        private async void HandleWin()
         {
+            if (_isEndHandled)
+                return;
+
+            _isEndHandled = true;
+
             Time.timeScale = 0f;
+            _gameFactory.ShowEndGameOverlay(true);
+
+            await Task.Delay(5000);
+
+            Time.timeScale = 1f;
             _windowService.Open(WindowId.MainMenu);
-            Debug.Log("WIN: All waves completed");
         }
 
-        private void HandleLose()
+        private async void HandleLose()
         {
+            if (_isEndHandled)
+                return;
+
+            _isEndHandled = true;
+
             Time.timeScale = 0f;
+            _gameFactory.ShowEndGameOverlay(false);
+
+            await Task.Delay(5000);
+
+            Time.timeScale = 1f;
             _windowService.Open(WindowId.MainMenu);
-            Debug.Log("LOSE: Castle destroyed");
         }
     }
 }

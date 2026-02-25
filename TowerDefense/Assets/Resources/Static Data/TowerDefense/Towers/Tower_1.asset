@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Tower_1
   m_EditorClassIdentifier: 
   id: 0
-  range: 20
-  attackInterval: 0.5
+  range: 40
+  attackInterval: 0.4
   damage: 10
-  projectileAddress: '"C:\Work\TowerDefense-TestTask\TowerDefense\Assets\Resources_moved\Towers\Projectile\Projectile_2.prefab"'
+  projectileAddress: Projectile_1
   projectileSpeed: 15
   targetsCount: 2
   aoeRadius: 2

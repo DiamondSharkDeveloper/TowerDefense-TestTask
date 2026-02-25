@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using CodeBase.Enums;
 using CodeBase.GamePlay;
-using CodeBase.GamePlay.Enemys;
 using CodeBase.Infrastructure.AssetManagement;
 using CodeBase.Infrastructure.States;
 using CodeBase.Logic;
@@ -39,6 +38,8 @@ namespace CodeBase.Infrastructure.Factory
         private GameObject _waveRunnerGo;
 
         private GameObject _hudInstance;
+        private EndGameHudView _endGameHud;
+
         private GameObject _tower1Instance;
         private GameObject _tower2Instance;
 
@@ -99,12 +100,22 @@ namespace CodeBase.Infrastructure.Factory
             EnsureWaveRunner();
 
             ResetWaveState();
-
             _scoreService.Reset();
 
             WaveRunner runner = _waveRunnerGo.GetComponent<WaveRunner>();
             runner.Init(levelStaticData, SpawnFromWave, OnAllWavesSpawned);
             runner.StartWaves();
+        }
+
+        public void ShowEndGameOverlay(bool isWin)
+        {
+            if (_endGameHud == null)
+                return;
+
+            if (isWin)
+                _endGameHud.ShowWin();
+            else
+                _endGameHud.ShowLose();
         }
 
         private void ResetWaveState()
@@ -113,7 +124,11 @@ namespace CodeBase.Infrastructure.Factory
             _allWavesSpawned = false;
             _isGameOver = false;
 
-            _enemyRegistryService.Registry.Clear();
+            if (_enemyRegistryService != null)
+                _enemyRegistryService.Registry.Clear();
+
+            if (_endGameHud != null)
+                _endGameHud.HideAll();
         }
 
         private void CacheAndInitCastle()
@@ -336,7 +351,7 @@ namespace CodeBase.Infrastructure.Factory
                         target, data.dieTime);
 
                 case CreatureTypeId.Golem:
-                    return go.GetComponent<EnemyShooter>().Init(
+                    return go.GetComponent<EnemyAttacker>().Init(
                         data.speed, data.coinsPerKill, data.health,
                         data.attackPower, data.attackDelay, data.stopDistance,
                         target, data.dieTime);
@@ -420,9 +435,13 @@ namespace CodeBase.Infrastructure.Factory
 
             _hudInstance = Object.Instantiate(hudPrefab, _levelReferences.UiRoot);
 
-            ScoreHudView scoreView = _hudInstance.GetComponentInChildren<ScoreHudView>(true);
+            HUD scoreView = _hudInstance.GetComponentInChildren<HUD>(true);
             if (scoreView != null)
-                scoreView.Init(_scoreService);
+                scoreView.Init(_scoreService, _levelReferences.CastleTarget);
+
+            _endGameHud = _hudInstance.GetComponentInChildren<EndGameHudView>(true);
+            if (_endGameHud != null)
+                _endGameHud.HideAll();
         }
 
         private async void CreateTowersIfNeeded()
@@ -467,6 +486,7 @@ namespace CodeBase.Infrastructure.Factory
 
             tower.Init(data, _enemyRegistryService.Registry);
             await tower.InitVisuals(_assets);
+
             return instance;
         }
 
@@ -476,11 +496,14 @@ namespace CodeBase.Infrastructure.Factory
                 _castleCached.OnDie -= HandleCastleDie;
 
             StopWaves();
-            _enemyRegistryService.Registry.Clear();
+
+            if (_enemyRegistryService != null)
+                _enemyRegistryService.Registry.Clear();
 
             if (_hudInstance != null)
                 Object.Destroy(_hudInstance);
             _hudInstance = null;
+            _endGameHud = null;
 
             if (_tower1Instance != null)
                 Object.Destroy(_tower1Instance);

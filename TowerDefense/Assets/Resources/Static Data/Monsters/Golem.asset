@@ -13,9 +13,10 @@ MonoBehaviour:
   m_Name: Golem
   m_EditorClassIdentifier: 
   id: 3
-  speed: 2
+  speed: 4
   coinsPerKill: 100
-  health: 300
+  health: 400
   attackPower: 40
   attackDelay: 7
-  stopDistance: 60
+  stopDistance: 1
+  dieTime: 1

@@ -13,9 +13,11 @@ MonoBehaviour:
   m_Name: Tower_2
   m_EditorClassIdentifier: 
   id: 1
-  range: 6
+  range: 25
   attackInterval: 0.5
-  damage: 10
-  targetsCount: 2
+  damage: 15
+  projectileAddress: Projectile_2
+  projectileSpeed: 15
+  targetsCount: 3
   aoeRadius: 2
   aoeMaxTargets: 3

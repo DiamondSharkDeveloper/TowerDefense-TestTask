@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using CodeBase.GamePlay.Enemys;
+using CodeBase.GamePlay.Towers;
 using CodeBase.Infrastructure.AssetManagement;
 using CodeBase.StaticData.TowerDefense;
 using UnityEngine;
